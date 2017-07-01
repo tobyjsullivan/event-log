@@ -10,7 +10,7 @@ docker pull postgres:9.6.3
 docker run --name event-log-postgres -e POSTGRES_PASSWORD=pass1234 -d postgres:9.6.3
 ```
 
-Test the DB is running:
+Test DB by starting the psql cli:
 
 ```sh
 docker exec -ti event-log-postgres psql -U postgres
