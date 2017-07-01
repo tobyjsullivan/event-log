@@ -20,6 +20,6 @@ docker exec -ti event-log-postgres psql -U postgres
 
 ```sh
 docker pull tobyjsullivan/flyway:latest
-docker run -ti --link event-log-postgres:db flyway:latest migrate -url=jdbc:postgresql://db:5432/postgres -user=postgres -password=pass1234
+docker run -ti --link event-log-postgres:db flyway:latest -url=jdbc:postgresql://db:5432/postgres -user=postgres -password=pass1234 migrate
 ```
 
