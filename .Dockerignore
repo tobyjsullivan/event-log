@@ -1,1 +1,6 @@
-/.env
+.env
+data
+env
+.idea
+*.iml
+

@@ -44,15 +44,6 @@ func init() {
 }
 
 func main() {
-    // Test DB connection
-    logger.Println("Testing connection...")
-    var count int
-    err := db.QueryRow(`SELECT COUNT(*) FROM logs`).Scan(&count)
-    if err != nil {
-        panic(err.Error())
-    }
-    logger.Println(fmt.Sprintf("%d logs found in DB.", count))
-
     r := buildRoutes()
 
     n := negroni.New()

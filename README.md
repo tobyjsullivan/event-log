@@ -1,47 +1,28 @@
 # Event Log Service
 
+## Running locally with docker-compose
 
-## Running locally with Docker
-
-### Start a Postgres Container
-
-```sh
-docker pull postgres:9.6.3
-docker run --name event-log-postgres -e POSTGRES_PASSWORD=pass1234 -d postgres:9.6.3
-```
-
-Test DB by starting the psql cli:
+### Copy and configure .env files
 
 ```sh
-docker exec -ti event-log-postgres psql -U postgres
+cp ./env/sample/*.env ./env 
+# Edit all .env files as needed
 ```
 
-### Run migrations
+### Start the stack
 
 ```sh
-docker pull tobyjsullivan/flyway:latest
-docker run -ti -v `pwd`/db:/sql --link event-log-postgres:db flyway:latest -url=jdbc:postgresql://db:5432/postgres -user=postgres -password=pass1234 migrate
+docker-compose up
+# Note: You may need to do this twice to properly configure DB.
+
+# Run any pending migrations
+docker-compose run flyway -url=jdbc:postgresql://postgres:5432/postgres -user=postgres -password=pass1234 migrate
 ```
 
-### Run event-log service
-
-#### Create an `.env` file
-
-You should start by creating a `.env` file with the necessary configurations.
-This would be a good template:
-
-```
-PG_HOSTNAME=db
-PG_USERNAME=postgres
-PG_PASSWORD=pass1234
-PG_DATABASE=postgres
-```
-
-#### Build and run the container
+### (Optional) Connect to the postgres instance
 
 ```sh
-docker build -t event-log .
-docker run -it --env-file=./.env --link event-log-postgres:db event-log
+docker-compose run postgres psql -h postgres -U postgres
 ```
 
 ## API
