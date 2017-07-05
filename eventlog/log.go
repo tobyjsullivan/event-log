@@ -22,3 +22,10 @@ func (id *LogID) Parse(s string) error {
 
     return nil
 }
+
+func (id *LogID) String() string {
+    bId := [16]byte(*id)
+    serializer := uuid.UUID(bId)
+
+    return serializer.String()
+}

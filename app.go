@@ -96,7 +96,7 @@ func createLogHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    w.Write([]byte{})
+    w.Write([]byte(fmt.Sprintf("Log created: %s", id.String())))
 }
 
 func createLog(conn *sql.DB, logId eventlog.LogID) error {
