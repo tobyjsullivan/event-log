@@ -12,7 +12,7 @@ import (
     _ "github.com/lib/pq"
     "database/sql"
     "log"
-    "github.com/tobyjsullivan/event-log/eventlog"
+    eventlog "github.com/tobyjsullivan/event-log/log"
     "github.com/tobyjsullivan/event-store.v3/events"
     "encoding/base64"
     "errors"

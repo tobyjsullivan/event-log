@@ -1,7 +1,11 @@
 version: '3'
 services:
   event-log:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile-dev
+    volumes:
+    - .:/go/src/github.com/tobyjsullivan/event-log
     ports:
     - "3003:3000"
     depends_on:
