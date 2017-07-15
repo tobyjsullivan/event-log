@@ -9,10 +9,10 @@ services:
     ports:
     - "3003:3000"
     depends_on:
-    - "postgres"
+    - "db"
     - "event-store"
     environment:
-    - PG_HOSTNAME=postgres
+    - PG_HOSTNAME=db
     - PG_USERNAME=postgres
     - PG_PASSWORD=pass1234
     - PG_DATABASE=postgres
@@ -21,8 +21,8 @@ services:
     volumes:
     - ./db:/sql
     depends_on:
-    - "postgres"
-  postgres:
+    - "db"
+  db:
     image: postgres:9.6.3
     environment:
     - POSTGRES_PASSWORD=pass1234
@@ -30,14 +30,10 @@ services:
     - ./data:/var/lib/postgresql/data
   event-store:
     image: tobyjsullivan/event-store.v3
-    ports:
-    - "3001:3000"
     env_file:
     - ./env/event-store.env
   event-reader:
     image: tobyjsullivan/event-reader.v3
-    ports:
-    - "3002:3000"
     env_file:
     - ./env/event-reader.env
 

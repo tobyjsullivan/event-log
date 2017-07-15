@@ -6,22 +6,25 @@ import (
     "fmt"
     "net/http"
 
-    "github.com/urfave/negroni"
     "github.com/gorilla/mux"
+    "github.com/urfave/negroni"
+
+    "database/sql"
+    "encoding/base64"
+    "encoding/hex"
+    "errors"
+    "log"
 
     _ "github.com/lib/pq"
-    "database/sql"
-    "log"
-    eventlog "github.com/tobyjsullivan/event-log/log"
+    eventLog "github.com/tobyjsullivan/event-log/log"
+    "github.com/tobyjsullivan/event-log/store"
     "github.com/tobyjsullivan/event-store.v3/events"
-    "encoding/base64"
-    "errors"
-    "encoding/hex"
 )
 
 var (
-    logger *log.Logger
-    db *sql.DB
+    logger     *log.Logger
+    db         *sql.DB
+    eventStore *store.Store
 )
 
 func init() {
@@ -41,6 +44,8 @@ func init() {
     if err != nil {
         panic(err.Error())
     }
+
+    eventStore = store.New(&store.StoreConfig{})
 }
 
 func main() {
@@ -73,25 +78,29 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 func createLogHandler(w http.ResponseWriter, r *http.Request) {
     err := r.ParseForm()
     if err != nil {
+        logger.Println("Error parsing form.", err.Error())
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
 
     logId := r.Form.Get("log-id")
     if logId == "" {
+        logger.Println("Error getting log-id from form.", err.Error())
         http.Error(w, "log-id must be set.", http.StatusBadRequest)
         return
     }
 
-    var id eventlog.LogID
+    var id eventLog.LogID
     err = id.Parse(logId)
     if err != nil {
+        logger.Println("Error parsing logId.", err.Error())
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
 
     err = createLog(db, id)
     if err != nil {
+        logger.Println("Error creating log.", err.Error())
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
@@ -99,16 +108,18 @@ func createLogHandler(w http.ResponseWriter, r *http.Request) {
     w.Write([]byte(fmt.Sprintf("Log created: %s", id.String())))
 }
 
-func createLog(conn *sql.DB, logId eventlog.LogID) error {
+func createLog(conn *sql.DB, logId eventLog.LogID) error {
     bHead := [32]byte{}
 
     res, err := conn.Exec(`INSERT INTO logs(ext_lookup_key, head) VALUES ($1, $2)`, logId[:], bHead[:])
     if err != nil {
+        logger.Println("Error inserting new log record.", err.Error())
         return err
     }
 
     numRows, err := res.RowsAffected()
     if err != nil {
+        logger.Println("Error reading RowsAffected.", err.Error())
         return err
     }
     logger.Println("Rows affected:", numRows)
@@ -119,31 +130,36 @@ func createLog(conn *sql.DB, logId eventlog.LogID) error {
 func appendEventHandler(w http.ResponseWriter, r *http.Request) {
     err := r.ParseForm()
     if err != nil {
+        logger.Println("Error parsing form during append-event.", err.Error())
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
 
     paramLogId := r.Form.Get("log-id")
     if paramLogId == "" {
+        logger.Println("Error parsing log-id.", err.Error())
         http.Error(w, "log-id must be set.", http.StatusBadRequest)
         return
     }
 
     eventType := r.Form.Get("event-type")
     if eventType == "" {
+        logger.Println("Error parsing event-tyoe.", err.Error())
         http.Error(w, "event-type must be set.", http.StatusBadRequest)
         return
     }
 
     eventData := r.Form.Get("event-data")
     if eventData == "" {
+        logger.Println("Error parsing event-data.", err.Error())
         http.Error(w, "event-data must be set.", http.StatusBadRequest)
         return
     }
 
-    var logId eventlog.LogID
+    var logId eventLog.LogID
     err = logId.Parse(paramLogId)
     if err != nil {
+        logger.Println("Error parsing LogID during event append.", err.Error())
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
@@ -151,6 +167,7 @@ func appendEventHandler(w http.ResponseWriter, r *http.Request) {
     var parsedData []byte
     parsedData, err = base64.StdEncoding.DecodeString(eventData)
     if err != nil {
+        logger.Println("Error parsing data string.", err.Error())
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
@@ -158,6 +175,7 @@ func appendEventHandler(w http.ResponseWriter, r *http.Request) {
     // Get the current log head
     headId, err := getLogHead(db, logId)
     if err != nil {
+        logger.Println("Error reading current log head.", err.Error())
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
@@ -165,14 +183,15 @@ func appendEventHandler(w http.ResponseWriter, r *http.Request) {
     // Send the event to event-store service
     e := &events.Event{
         PreviousEvent: headId,
-        Type: eventType,
-        Data: parsedData,
+        Type:          eventType,
+        Data:          parsedData,
     }
     newEventId, err := createEvent(e)
 
-    // TODO Update the log head
+    // Update the log head
     err = updateLogHead(db, logId, headId, newEventId)
     if err != nil {
+        logger.Println("Error updating log head.", err.Error())
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
@@ -180,10 +199,11 @@ func appendEventHandler(w http.ResponseWriter, r *http.Request) {
     fmt.Fprint(w, "Updated log: ", hex.EncodeToString(newEventId[:]))
 }
 
-func getLogHead(conn *sql.DB, id eventlog.LogID) (events.EventID, error) {
+func getLogHead(conn *sql.DB, id eventLog.LogID) (events.EventID, error) {
     var head []byte
     err := conn.QueryRow(`SELECT head FROM logs WHERE ext_lookup_key=$1`, id[:]).Scan(&head)
     if err != nil {
+        logger.Println("Error executing SELECT for log head lookup.", err.Error())
         return events.EventID{}, err
     }
 
@@ -192,7 +212,7 @@ func getLogHead(conn *sql.DB, id eventlog.LogID) (events.EventID, error) {
     return out, nil
 }
 
-func updateLogHead(conn *sql.DB, logId eventlog.LogID, expectedHead events.EventID, newHead events.EventID) error {
+func updateLogHead(conn *sql.DB, logId eventLog.LogID, expectedHead events.EventID, newHead events.EventID) error {
     res, err := conn.Exec(`UPDATE logs SET head=$1 WHERE ext_lookup_key=$2 AND head=$3`, newHead[:], logId[:], expectedHead[:])
     if err != nil {
         return err
@@ -211,6 +231,11 @@ func updateLogHead(conn *sql.DB, logId eventlog.LogID, expectedHead events.Event
 }
 
 func createEvent(e *events.Event) (events.EventID, error) {
-    // TODO Send the event to event-store service
+    err := eventStore.WriteEvent(e)
+    if err != nil {
+        logger.Println("Error writing event.", err.Error())
+        return events.EventID{}, err
+    }
+
     return e.ID(), nil
 }
