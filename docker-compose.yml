@@ -12,6 +12,7 @@ services:
     - "db"
     - "event-store"
     environment:
+    - EVENT_STORE_API=http://event-store:3000/
     - PG_HOSTNAME=db
     - PG_USERNAME=postgres
     - PG_PASSWORD=pass1234

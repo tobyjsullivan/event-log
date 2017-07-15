@@ -10,15 +10,22 @@ import (
 )
 
 type Store struct {
-
+    svcUrl *url.URL
 }
 
 type StoreConfig struct {
-
+    EventStoreServiceUrl string
 }
 
-func New(conf *StoreConfig) *Store {
-    return &Store{}
+func New(conf *StoreConfig) (*Store, error) {
+    svcUrl, err := url.Parse(conf.EventStoreServiceUrl)
+    if err != nil {
+        return nil, err
+    }
+
+    return &Store{
+        svcUrl: svcUrl,
+    }, nil
 }
 
 func (s *Store) WriteEvent(e *events.Event) error {
@@ -26,7 +33,8 @@ func (s *Store) WriteEvent(e *events.Event) error {
 
     b64Data := base64.StdEncoding.EncodeToString(e.Data)
 
-    resp, err := http.PostForm("http://event-store:3000/events", url.Values{
+    eventsEndpoint := s.svcUrl.ResolveReference(&url.URL{Path:"./events"})
+    resp, err := http.PostForm(eventsEndpoint.String(), url.Values{
         "previous": {previousId},
         "type": {e.Type},
         "data": {b64Data},

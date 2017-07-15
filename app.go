@@ -42,10 +42,17 @@ func init() {
     var err error
     db, err = sql.Open("postgres", dbConnOpts)
     if err != nil {
+        logger.Println("Error initializing connection to Postgres DB.", err.Error())
         panic(err.Error())
     }
 
-    eventStore = store.New(&store.StoreConfig{})
+    eventStore, err = store.New(&store.StoreConfig{
+        EventStoreServiceUrl: os.Getenv("EVENT_STORE_API"),
+    })
+    if err != nil {
+        logger.Println("Error initializing connection to event store.", err.Error())
+        panic(err.Error())
+    }
 }
 
 func main() {
