@@ -14,15 +14,12 @@ cp ./env/sample/*.env ./env
 ```sh
 docker-compose up
 # Note: You may need to do this twice to properly configure DB.
-
-# Run any pending migrations
-docker-compose run flyway -url=jdbc:postgresql://postgres:5432/postgres -user=postgres -password=pass1234 migrate
 ```
 
 ### (Optional) Connect to the postgres instance
 
 ```sh
-docker-compose run postgres psql -h postgres -U postgres
+docker-compose run db psql -h db -U postgres
 ```
 
 ## API

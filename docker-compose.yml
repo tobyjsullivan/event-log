@@ -17,14 +17,8 @@ services:
     - PG_USERNAME=postgres
     - PG_PASSWORD=pass1234
     - PG_DATABASE=postgres
-  flyway:
-    image: tobyjsullivan/flyway:latest
-    volumes:
-    - ./db:/sql
-    depends_on:
-    - "db"
   db:
-    image: postgres:9.6.3
+    image: tobyjsullivan/logs-db:latest
     environment:
     - POSTGRES_PASSWORD=pass1234
     volumes:
