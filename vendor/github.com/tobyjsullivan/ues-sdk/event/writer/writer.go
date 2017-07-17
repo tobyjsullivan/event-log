@@ -1,34 +1,34 @@
-package store
+package writer
 
 import (
-    "github.com/tobyjsullivan/event-store.v3/events"
-    "net/http"
     "net/url"
     "encoding/base64"
-    "errors"
+    "net/http"
     "fmt"
+    "github.com/tobyjsullivan/ues-sdk/event"
+    "errors"
 )
 
-type Store struct {
+type EventWriter struct {
     svcUrl *url.URL
 }
 
-type StoreConfig struct {
-    EventStoreServiceUrl string
+type EventWriterConfig struct {
+    ServiceUrl string
 }
 
-func New(conf *StoreConfig) (*Store, error) {
-    svcUrl, err := url.Parse(conf.EventStoreServiceUrl)
+func New(conf *EventWriterConfig) (*EventWriter, error) {
+    svcUrl, err := url.Parse(conf.ServiceUrl)
     if err != nil {
         return nil, err
     }
 
-    return &Store{
+    return &EventWriter{
         svcUrl: svcUrl,
     }, nil
 }
 
-func (s *Store) WriteEvent(e *events.Event) error {
+func (s *EventWriter) PutEvent(e *event.Event) error {
     previousId :=  e.PreviousEvent.String()
 
     b64Data := base64.StdEncoding.EncodeToString(e.Data)
@@ -50,3 +50,4 @@ func (s *Store) WriteEvent(e *events.Event) error {
 
     return nil
 }
+

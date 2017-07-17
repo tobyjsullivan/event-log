@@ -17,14 +17,14 @@ import (
 
     _ "github.com/lib/pq"
     eventLog "github.com/tobyjsullivan/event-log/log"
-    "github.com/tobyjsullivan/event-log/store"
-    "github.com/tobyjsullivan/event-store.v3/events"
+    "github.com/tobyjsullivan/ues-sdk/event/writer"
+    "github.com/tobyjsullivan/ues-sdk/event"
 )
 
 var (
     logger     *log.Logger
     db         *sql.DB
-    eventStore *store.Store
+    eventWriter *writer.EventWriter
 )
 
 func init() {
@@ -46,8 +46,8 @@ func init() {
         panic(err.Error())
     }
 
-    eventStore, err = store.New(&store.StoreConfig{
-        EventStoreServiceUrl: os.Getenv("EVENT_STORE_API"),
+    eventWriter, err = writer.New(&writer.EventWriterConfig{
+        ServiceUrl: os.Getenv("EVENT_STORE_API"),
     })
     if err != nil {
         logger.Println("Error initializing connection to event store.", err.Error())
@@ -188,7 +188,7 @@ func appendEventHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     // Send the event to event-store service
-    e := &events.Event{
+    e := &event.Event{
         PreviousEvent: headId,
         Type:          eventType,
         Data:          parsedData,
@@ -206,20 +206,20 @@ func appendEventHandler(w http.ResponseWriter, r *http.Request) {
     fmt.Fprint(w, "Updated log: ", hex.EncodeToString(newEventId[:]))
 }
 
-func getLogHead(conn *sql.DB, id eventLog.LogID) (events.EventID, error) {
+func getLogHead(conn *sql.DB, id eventLog.LogID) (event.EventID, error) {
     var head []byte
     err := conn.QueryRow(`SELECT head FROM logs WHERE ext_lookup_key=$1`, id[:]).Scan(&head)
     if err != nil {
         logger.Println("Error executing SELECT for log head lookup.", err.Error())
-        return events.EventID{}, err
+        return event.EventID{}, err
     }
 
-    var out events.EventID
+    var out event.EventID
     copy(out[:], head)
     return out, nil
 }
 
-func updateLogHead(conn *sql.DB, logId eventLog.LogID, expectedHead events.EventID, newHead events.EventID) error {
+func updateLogHead(conn *sql.DB, logId eventLog.LogID, expectedHead event.EventID, newHead event.EventID) error {
     res, err := conn.Exec(`UPDATE logs SET head=$1 WHERE ext_lookup_key=$2 AND head=$3`, newHead[:], logId[:], expectedHead[:])
     if err != nil {
         return err
@@ -237,11 +237,11 @@ func updateLogHead(conn *sql.DB, logId eventLog.LogID, expectedHead events.Event
     return nil
 }
 
-func createEvent(e *events.Event) (events.EventID, error) {
-    err := eventStore.WriteEvent(e)
+func createEvent(e *event.Event) (event.EventID, error) {
+    err := eventWriter.PutEvent(e)
     if err != nil {
         logger.Println("Error writing event.", err.Error())
-        return events.EventID{}, err
+        return event.EventID{}, err
     }
 
     return e.ID(), nil

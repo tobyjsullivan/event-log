@@ -1,12 +1,12 @@
 package eventlog
 
 import (
-    "github.com/tobyjsullivan/event-store.v3/events"
     "github.com/satori/go.uuid"
+    "github.com/tobyjsullivan/ues-sdk/event"
 )
 
 type Log struct {
-    Head events.EventID
+    Head event.EventID
 }
 
 type LogID [16]byte

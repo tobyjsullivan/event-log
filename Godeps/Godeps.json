@@ -24,8 +24,12 @@
 			"Rev": "b061729afc07e77a8aa4fad0a2fd840958f1942a"
 		},
 		{
-			"ImportPath": "github.com/tobyjsullivan/event-store.v3/events",
-			"Rev": "31298583a70fe288acbc8bd07a837890d77d89d7"
+			"ImportPath": "github.com/tobyjsullivan/ues-sdk/event",
+			"Rev": "9e6fb864c088cc236f34324e954f4848febda7ae"
+		},
+		{
+			"ImportPath": "github.com/tobyjsullivan/ues-sdk/event/writer",
+			"Rev": "9e6fb864c088cc236f34324e954f4848febda7ae"
 		},
 		{
 			"ImportPath": "github.com/urfave/negroni",
