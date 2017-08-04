@@ -18,17 +18,17 @@ services:
     - PG_PASSWORD=pass1234
     - PG_DATABASE=postgres
   db:
-    image: tobyjsullivan/logs-db:latest
+    image: tobyjsullivan/logs-db:1.0.0
     environment:
     - POSTGRES_PASSWORD=pass1234
     volumes:
     - ./data:/var/lib/postgresql/data
   event-store:
-    image: tobyjsullivan/event-store.v3
+    image: tobyjsullivan/event-store:3.0.0
     env_file:
     - ./env/event-store.env
   event-reader:
-    image: tobyjsullivan/event-reader.v3
+    image: tobyjsullivan/event-reader:3.0.0
     env_file:
     - ./env/event-reader.env
 
