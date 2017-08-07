@@ -82,6 +82,8 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
     fmt.Fprint(w, "The service is online!\n")
 }
 
+// Placeholder for backward-compatibility
+// TODO Remove on next major version release
 func createLogHandler(w http.ResponseWriter, r *http.Request) {
     err := r.ParseForm()
     if err != nil {
@@ -97,28 +99,16 @@ func createLogHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    var id eventLog.LogID
-    err = id.Parse(logId)
-    if err != nil {
-        logger.Println("Error parsing logId.", err.Error())
-        http.Error(w, err.Error(), http.StatusBadRequest)
-        return
-    }
+    // NO-OP
+    // We don't need to create the log until it's written to.
 
-    err = createLog(db, id)
-    if err != nil {
-        logger.Println("Error creating log.", err.Error())
-        http.Error(w, err.Error(), http.StatusBadRequest)
-        return
-    }
-
-    w.Write([]byte(fmt.Sprintf("Log created: %s", id.String())))
+    w.Write([]byte(fmt.Sprintf("Log created: %s", logId)))
 }
 
-func createLog(conn *sql.DB, logId eventLog.LogID) error {
+func createLogIfNotExists(conn *sql.DB, logId eventLog.LogID) error {
     bHead := [32]byte{}
 
-    res, err := conn.Exec(`INSERT INTO logs(ext_lookup_key, head) VALUES ($1, $2)`, logId[:], bHead[:])
+    res, err := conn.Exec(`INSERT INTO logs(ext_lookup_key, head) VALUES ($1, $2) ON CONFLICT DO NOTHING`, logId[:], bHead[:])
     if err != nil {
         logger.Println("Error inserting new log record.", err.Error())
         return err
@@ -187,6 +177,11 @@ func appendEventHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    zero := event.EventID{}
+    if headId == zero {
+        createLogIfNotExists(db, logId)
+    }
+
     // Send the event to event-store service
     e := &event.Event{
         PreviousEvent: headId,
@@ -209,6 +204,10 @@ func appendEventHandler(w http.ResponseWriter, r *http.Request) {
 func getLogHead(conn *sql.DB, id eventLog.LogID) (event.EventID, error) {
     var head []byte
     err := conn.QueryRow(`SELECT head FROM logs WHERE ext_lookup_key=$1`, id[:]).Scan(&head)
+    if err == sql.ErrNoRows {
+        // Treat a missing log as an empty log
+        return event.EventID{}, nil
+    }
     if err != nil {
         logger.Println("Error executing SELECT for log head lookup.", err.Error())
         return event.EventID{}, err
